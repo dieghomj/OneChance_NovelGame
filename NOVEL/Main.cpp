@@ -1,15 +1,56 @@
 #include <stdio.h>
 #include <windows.h> 
-//ƒ‰ƒCƒuƒ‰ƒŠ“Ç
-#pragma comment(lib, "winmm.lib")		//‰¹ºÄ¶‚Åg—p‚·‚é
-#pragma execution_character_set("utf-8")
+//ãƒ©ã‚¤ãƒ–ãƒ©ãƒªèª­è¾¼
+#pragma comment(lib, "winmm.lib")		//éŸ³å£°å†ç”Ÿã§ä½¿ç”¨ã™ã‚‹
 
 //Tool Functions
 
 
 //===================================================================================
 
-//BGM ŠÖ”
+void DrawTransparentRectangle(RECT rc, HDC hDC, COLORREF outline) 
+{
+	//Create brush and pen
+	HPEN hPen = CreatePen(PS_SOLID, 5, outline);
+
+	//Select brush and pen
+	HBRUSH hOldBrush = (HBRUSH)SelectObject(hDC, GetStockObject(HOLLOW_BRUSH));
+	HPEN hOldPen = (HPEN)SelectObject(hDC, hPen);
+
+	Rectangle(hDC, rc.left, rc.top, rc.right, rc.bottom);
+
+	// Select the original objects back into the DC
+	SelectObject(hDC, hOldBrush);
+	SelectObject(hDC, hOldPen);
+
+	// Delete the custom objects to free memory
+	DeleteObject(hPen);
+}
+
+void DrawRectangle(RECT rc, HDC hDC, COLORREF bg, COLORREF outline)
+{
+
+	//Create brush and pen
+	HBRUSH hBrush = CreateSolidBrush(bg);
+	HPEN hPen = CreatePen(PS_SOLID, 5, outline); 
+
+	//Select brush and pen
+	HBRUSH hOldBrush = (HBRUSH)SelectObject(hDC, hBrush);
+	HPEN hOldPen = (HPEN)SelectObject(hDC, hPen);
+
+	Rectangle(hDC, rc.left, rc.top, rc.right, rc.bottom);
+
+	// Select the original objects back into the DC
+	SelectObject(hDC, hOldBrush);
+	SelectObject(hDC, hOldPen);
+
+	// Delete the custom objects to free memory
+	DeleteObject(hBrush);
+	DeleteObject(hPen);
+}
+
+
+//BGM é–¢æ•°
 const char* checkBGMStatus(int BGMNo, char* BGMStatus, HWND hWnd)
 {
 	char tmp[32];
@@ -46,38 +87,38 @@ LRESULT CALLBACK WindowProc(
 	WPARAM wParam,	//Width Parameter
 	LPARAM lParam)	//Length Parameter
 {
-	HDC hDC;		//ƒeƒoƒCƒXƒRƒ“ƒeƒLƒXƒg
-	PAINTSTRUCT ps; //•`‰æ\‘¢‘Ì
+	HDC hDC;		//ãƒ†ãƒã‚¤ã‚¹ã‚³ãƒ³ãƒ†ã‚­ã‚¹ãƒˆ
+	PAINTSTRUCT ps; //æç”»æ§‹é€ ä½“
 
-	static char disptext[128];	//•\¦Šm”F—p
+	static char disptext[128];	//è¡¨ç¤ºç¢ºèªç”¨
 
-	static HDC hMemDC;		//ƒƒ‚ƒŠ[ƒfƒoƒCƒXƒRƒ“ƒeƒLƒXƒg
+	static HDC hMemDC;		//ãƒ¡ãƒ¢ãƒªãƒ¼ãƒ‡ãƒã‚¤ã‚¹ã‚³ãƒ³ãƒ†ã‚­ã‚¹ãƒˆ
 
-	static HFONT hFont;		//ƒtƒHƒ“ƒgƒnƒ“ƒhƒ‹
+	static HFONT hFont;		//ãƒ•ã‚©ãƒ³ãƒˆãƒãƒ³ãƒ‰ãƒ«
 
 	static int sceneNo = 0;		//Scene Number
 
-	static bool dispSel = false;	//‘I‘ğˆ•\Ø‘Ö
+	static bool dispSel = false;	//é¸æŠè‚¢è¡¨åˆ‡æ›¿
 	static int selNo = 1;
 
-	static int BGMNo = 1; //BGM”Ô†
+	static int BGMNo = 1; //BGMç•ªå·
 
-	static char BGMStatus[256]; //BGMƒXƒe[ƒ^ƒXƒƒbƒZ[ƒWæ“¾—p
+	static char BGMStatus[256]; //BGMã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸å–å¾—ç”¨
 	
-	static char sel[2][50 * 2]; //‘I‘ğ
+	static char sel[2][50 * 2]; //é¸æŠ
 	static char story[11][50 * 2];
 
 	static HBITMAP hBack[5]; 
 
 
 	
-	//ƒƒbƒZ[ƒW•Ê‚Ìˆ—
+	//ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸åˆ¥ã®å‡¦ç†
 	switch (uMsg)
 	{
 	case WM_DESTROY:
 		//Destroying has to be done in the opposite order to how it was created!!
 
-		//mp3‚ÌƒNƒ[ƒY
+		//mp3ã®ã‚¯ãƒ­ãƒ¼ã‚º
 		mciSendString("close BGM4", nullptr, 0, hWnd);
 		mciSendString("close BGM3", nullptr, 0, hWnd);
 		mciSendString("close BGM2", nullptr, 0, hWnd);
@@ -96,90 +137,90 @@ LRESULT CALLBACK WindowProc(
 		PostQuitMessage(0);
 		return 0;
 
-	case WM_CREATE:		//ƒEƒBƒ“ƒhƒE‚ª¶¬‚³‚ê‚é
+	case WM_CREATE:		//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ãŒç”Ÿæˆã•ã‚Œã‚‹æ™‚
 
-		//ƒƒ‚ƒŠDC‚Ìì¬
+		//ãƒ¡ãƒ¢ãƒªDCã®ä½œæˆ
 		hMemDC = CreateCompatibleDC(nullptr);
 
 		hFont = CreateFont(
-			60,							//•¶š‚
-			20,							//•¶š•
-			0,							//Šp“x
-			0,							//ƒx[ƒXƒ‰ƒCƒ“Šp“x
-			FW_REGULAR,					//‘¾‚³
+			50,							//æ–‡å­—é«˜
+			15,							//æ–‡å­—å¹…
+			0,							//è§’åº¦
+			0,							//ãƒ™ãƒ¼ã‚¹ãƒ©ã‚¤ãƒ³è§’åº¦
+			FW_REGULAR,					//å¤ªã•
 			FALSE,						//
-			FALSE,						//‰ºü
-			FALSE,						//‘ÅÁ‚µ
-			SHIFTJIS_CHARSET,			//•¶šƒZƒbƒg
-			OUT_DEFAULT_PRECIS,			//o—Í¸“x
-			CLIP_DEFAULT_PRECIS,		//ƒNƒŠƒbƒvƒ“ƒO¸“x
-			DEFAULT_QUALITY,			//o—Í•i¿
-			VARIABLE_PITCH | FF_ROMAN,	//	‰Âˆ¤ƒsƒbƒ`‚ÆƒtƒHƒ“ƒgƒtƒ@ƒ~ƒŠ
-			"MS Gothic");			//‘‘Ì(nullptr:Œ»İg‚í‚ê‚Ä‚¢‚é‘‘Ì)
+			FALSE,						//ä¸‹ç·š
+			FALSE,						//æ‰“æ¶ˆã—
+			SHIFTJIS_CHARSET,			//æ–‡å­—ã‚»ãƒƒãƒˆ
+			OUT_DEFAULT_PRECIS,			//å‡ºåŠ›ç²¾åº¦
+			CLIP_DEFAULT_PRECIS,		//ã‚¯ãƒªãƒƒãƒ—ãƒ³ã‚°ç²¾åº¦
+			DEFAULT_QUALITY,			//å‡ºåŠ›å“è³ª
+			VARIABLE_PITCH | FF_ROMAN,	//	å¯æ„›ãƒ”ãƒƒãƒã¨ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ãƒŸãƒª
+			"HGSã‚´ã‚·ãƒƒã‚¯E");			//æ›¸ä½“(nullptr:ç¾åœ¨ä½¿ã‚ã‚Œã¦ã„ã‚‹æ›¸ä½“)
 		
-		//”wŒi‚Ì“Ç‚İ‚Ş
+		//èƒŒæ™¯ã®èª­ã¿è¾¼ã‚€
 		hBack[0] = (HBITMAP)LoadImage(
-			nullptr,					//ƒCƒ“ƒXƒ^ƒ“ƒX
-			"Data\\BMP\\street.bmp",	//ƒtƒ@ƒCƒ‹–¼
-			IMAGE_BITMAP,				//ƒrƒbƒgƒ}ƒbƒv
-			0,0,						//‰æ‘œ‚Ì‚Í‚ÎA‚½‚©‚³i‚O‚Å©“®İ’èj
-			LR_LOADFROMFILE);			//ƒtƒ@ƒCƒ‹‚©‚ç“Ç‚İ‚Ş
+			nullptr,					//ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹
+			"Data\\BMP\\street.bmp",	//ãƒ•ã‚¡ã‚¤ãƒ«å
+			IMAGE_BITMAP,				//ãƒ“ãƒƒãƒˆãƒãƒƒãƒ—
+			0,0,						//ç”»åƒã®ã¯ã°ã€ãŸã‹ã•ï¼ˆï¼ã§è‡ªå‹•è¨­å®šï¼‰
+			LR_LOADFROMFILE);			//ãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰èª­ã¿è¾¼ã‚€
 
 		hBack[1] = (HBITMAP)LoadImage(
-			nullptr,					//ƒCƒ“ƒXƒ^ƒ“ƒX
-			"Data\\BMP\\mansion.bmp",	//ƒtƒ@ƒCƒ‹–¼
-			IMAGE_BITMAP,				//ƒrƒbƒgƒ}ƒbƒv
-			0, 0,						//‰æ‘œ‚Ì‚Í‚ÎA‚½‚©‚³i‚O‚Å©“®İ’èj
+			nullptr,					//ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹
+			"Data\\BMP\\mansion.bmp",	//ãƒ•ã‚¡ã‚¤ãƒ«å
+			IMAGE_BITMAP,				//ãƒ“ãƒƒãƒˆãƒãƒƒãƒ—
+			0, 0,						//ç”»åƒã®ã¯ã°ã€ãŸã‹ã•ï¼ˆï¼ã§è‡ªå‹•è¨­å®šï¼‰
 			LR_LOADFROMFILE);
 
 		hBack[2] = (HBITMAP)LoadImage(
-			nullptr,					//ƒCƒ“ƒXƒ^ƒ“ƒX
-			"Data\\BMP\\torii.bmp",	//ƒtƒ@ƒCƒ‹–¼
-			IMAGE_BITMAP,				//ƒrƒbƒgƒ}ƒbƒvx
-			0, 0,						//‰æ‘œ‚Ì‚Í‚ÎA‚½‚©‚³i‚O‚Å©“®İ’èj
-			LR_LOADFROMFILE);			//ƒtƒ@ƒCƒ‹‚©‚ç“Ç‚İ‚Ş
+			nullptr,					//ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹
+			"Data\\BMP\\torii.bmp",	//ãƒ•ã‚¡ã‚¤ãƒ«å
+			IMAGE_BITMAP,				//ãƒ“ãƒƒãƒˆãƒãƒƒãƒ—x
+			0, 0,						//ç”»åƒã®ã¯ã°ã€ãŸã‹ã•ï¼ˆï¼ã§è‡ªå‹•è¨­å®šï¼‰
+			LR_LOADFROMFILE);			//ãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰èª­ã¿è¾¼ã‚€
 
 		hBack[10] = (HBITMAP)LoadImage(
-			nullptr,					//ƒCƒ“ƒXƒ^ƒ“ƒX
-			"Data\\BMP\\heya.bmp",	//ƒtƒ@ƒCƒ‹–¼
-			IMAGE_BITMAP,				//ƒrƒbƒgƒ}ƒbƒv
-			0, 0,					//‰æ‘œ‚Ì‚Í‚ÎA‚½‚©‚³i‚O‚Å©“®İ’èj
-			LR_LOADFROMFILE);			//ƒtƒ@ƒCƒ‹‚©‚ç“Ç‚İ‚Ş
+			nullptr,					//ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹
+			"Data\\BMP\\heya.bmp",	//ãƒ•ã‚¡ã‚¤ãƒ«å
+			IMAGE_BITMAP,				//ãƒ“ãƒƒãƒˆãƒãƒƒãƒ—
+			0, 0,					//ç”»åƒã®ã¯ã°ã€ãŸã‹ã•ï¼ˆï¼ã§è‡ªå‹•è¨­å®šï¼‰
+			LR_LOADFROMFILE);			//ãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰èª­ã¿è¾¼ã‚€
 
-		//•¶š—ñ‚ÌƒRƒs[
-		strcpy_s(disptext, "ÌXBBB");
+		//æ–‡å­—åˆ—ã®ã‚³ãƒ”ãƒ¼
+		strcpy_s(disptext, "æ˜”ã€…ã€‚ã€‚ã€‚");
 
-		//‘I‘ğˆ‚ÌƒeƒLƒXƒg
-		strcpy_s(sel[0], "‚«‚ê‚¢‚ÈƒWƒƒƒCƒAƒ“");
-		strcpy_s(sel[1], "•’Ê‚ÌƒWƒƒƒCƒAƒ“");
+		//é¸æŠè‚¢ã®ãƒ†ã‚­ã‚¹ãƒˆ
+		strcpy_s(sel[0], "ãã‚Œã„ãªã‚¸ãƒ£ã‚¤ã‚¢ãƒ³");
+		strcpy_s(sel[1], "æ™®é€šã®ã‚¸ãƒ£ã‚¤ã‚¢ãƒ³");
 
-		strcpy_s(story[0], "‚±‚ñ‚É‚¿‚Í");
-		strcpy_s(story[1], "‚ ‚È‚½‚ª—‚Æ‚µ‚½‚Ì‚Í");
-		strcpy_s(story[2], "³’¼Ò‚Ì‚ ‚È‚½‚É‚Í\n‚«‚ê‚¢‚ÈƒWƒƒƒCƒAƒ“‚ğƒvƒŒƒZƒ“ƒgI");
-		strcpy_s(story[10],"?‚ğ‚Â‚¢‚½‚ ‚È‚½‚É\n•’Ê‚ÌƒWƒƒƒCƒAƒ“‚ğƒvƒŒƒZƒ“ƒgII");
+		strcpy_s(story[0], "ã“ã‚“ã«ã¡ã¯");
+		strcpy_s(story[1], "ã‚ãªãŸãŒè½ã¨ã—ãŸã®ã¯");
+		strcpy_s(story[2], "æ­£ç›´è€…ã®ã‚ãªãŸã«ã¯\nãã‚Œã„ãªã‚¸ãƒ£ã‚¤ã‚¢ãƒ³ã‚’ãƒ—ãƒ¬ã‚»ãƒ³ãƒˆï¼");
+		strcpy_s(story[10],"?ã‚’ã¤ã„ãŸã‚ãªãŸã«\næ™®é€šã®ã‚¸ãƒ£ã‚¤ã‚¢ãƒ³ã‚’ãƒ—ãƒ¬ã‚»ãƒ³ãƒˆï¼ï¼");
 
 
-		//MIDI‚Ü‚½‚Ímp3ƒtƒ@ƒCƒ‹‚ÌƒIƒvƒVƒ‡ƒ“
+		//MIDIã¾ãŸã¯mp3ãƒ•ã‚¡ã‚¤ãƒ«ã®ã‚ªãƒ—ã‚·ãƒ§ãƒ³
 		mciSendString("open Data\\BGM\\Holiday.mp3 alias BGM1", nullptr, 0, hWnd);
 		mciSendString("open Data\\BGM\\Last.mp3 alias BGM2", nullptr, 0, hWnd);
 		mciSendString("open Data\\BGM\\Pinch.mp3 alias BGM3", nullptr, 0, hWnd);
 		mciSendString("open Data\\BGM\\ThemeOfGian.mp3 alias BGM4",nullptr,0,hWnd);
 
-		//BGM‚ÌÄ¶
-		//BGM”Ô†İ’è
+		//BGMã®å†ç”Ÿ
+		//BGMç•ªå·è¨­å®š
 		BGMNo = playBGM(1, hWnd);
-		//ƒ^ƒCƒ}[İ’è
+		//ã‚¿ã‚¤ãƒãƒ¼è¨­å®š
 		SetTimer(hWnd,
-			1,			//ƒ^ƒCƒ}[No
-			100,		//ŠÔ
-			nullptr);	//ˆê’èŠÔ‚É“®‚©‚·ŠÖ”–¼
+			1,			//ã‚¿ã‚¤ãƒãƒ¼No
+			100,		//æ™‚é–“
+			nullptr);	//ä¸€å®šæ™‚é–“ã«å‹•ã‹ã™é–¢æ•°å
 
-	case WM_TIMER:	//ƒ^ƒCƒ}[‚Å“®‚­
+	case WM_TIMER:	//ã‚¿ã‚¤ãƒãƒ¼ã§å‹•ã
 
-		//‹È‚Ìó‘Ô‚ğ
+		//æ›²ã®çŠ¶æ…‹ã‚’
 		checkBGMStatus(BGMNo, BGMStatus, hWnd);
 
-		//‹È‚ª’â‚Ü‚Á‚Ä‚¢‚é‚©
+		//æ›²ãŒåœã¾ã£ã¦ã„ã‚‹ã‹
 		if (strcmp(BGMStatus, "stopped") == 0)
 		{
 			restartBGM(BGMNo, hWnd);
@@ -192,7 +233,7 @@ LRESULT CALLBACK WindowProc(
 		//if (sceneNo + 1 == 1)dispSel = true;
 		//else dispSel = false;
 		//sceneNo++;			//Show Scene 1
-		//‚ª‚ß‚ñ‚ÌÄ•`‰æ
+		//ãŒã‚ã‚“ã®å†æç”»
 		InvalidateRect(hWnd, nullptr, FALSE);
 		return 0;
 
@@ -224,10 +265,10 @@ LRESULT CALLBACK WindowProc(
 				sceneNo = 1;
 				dispSel = true;
 
-				//BGM‚Ì’â~
+				//BGMã®åœæ­¢
 				stopBGM(BGMNo, hWnd);
 
-				//BGM‚ÌÄ¶
+				//BGMã®å†ç”Ÿ
 				BGMNo = playBGM(2, hWnd);
 				break;
 
@@ -235,7 +276,7 @@ LRESULT CALLBACK WindowProc(
 				if (selNo == 1)
 				{
 					sceneNo = 2;
-					//waveƒtƒ@ƒCƒ‹‚ÌÄ¶
+					//waveãƒ•ã‚¡ã‚¤ãƒ«ã®å†ç”Ÿ
 					PlaySound("Data\\WAV\\GianVoice.wav",
 						nullptr,
 						SND_ASYNC | SND_FILENAME | SND_RING);
@@ -243,18 +284,18 @@ LRESULT CALLBACK WindowProc(
 						//SND_FILENAME		:
 						//SND_LOOP			:
 						// 
-					//BGM‚Ì’â~
+					//BGMã®åœæ­¢
 					stopBGM(BGMNo, hWnd);
-					//BGM‚ÌÄ¶
+					//BGMã®å†ç”Ÿ
 					BGMNo = playBGM(BGMNo,hWnd);
 				}
 				else
 				{
 					sceneNo = 10;
 
-					//BGM‚Ì’â~
+					//BGMã®åœæ­¢
 					stopBGM(BGMNo, hWnd);
-					//BGM‚ÌÄ¶
+					//BGMã®å†ç”Ÿ
 					playBGM(4, hWnd);
 					BGMNo = 4;
 				}
@@ -265,19 +306,19 @@ LRESULT CALLBACK WindowProc(
 			case 2:
 				sceneNo = 0;
 
-				//waveÄ¶’â~
+				//waveå†ç”Ÿåœæ­¢
 				PlaySound(nullptr,nullptr,SND_PURGE);
 				
-				//BGM‚Ì’â~
+				//BGMã®åœæ­¢
 				stopBGM(BGMNo, hWnd);
-				//BGM‚ÌÄ¶
+				//BGMã®å†ç”Ÿ
 				BGMNo = playBGM(1,hWnd);
 				break;
 			case 10:
 				sceneNo = 0;
-				//BGM‚Ì’â~
+				//BGMã®åœæ­¢
 				stopBGM(BGMNo, hWnd);
-				//BGM‚ÌÄ¶
+				//BGMã®å†ç”Ÿ
 				BGMNo = playBGM(1,hWnd);
 
 				break;		
@@ -289,70 +330,77 @@ LRESULT CALLBACK WindowProc(
 		InvalidateRect(hWnd, nullptr, FALSE);
 		return 0;
 
-	case WM_PAINT :		//ƒEƒBƒ“ƒhƒE‚ªXV‚³‚ê‚½
+	case WM_PAINT :		//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ãŒæ›´æ–°ã•ã‚ŒãŸæ™‚
 
 		SelectObject(hMemDC, hBack[sceneNo]);
 
-		//•`‰æŠJn
+		//æç”»é–‹å§‹
 		hDC = BeginPaint(hWnd,&ps);
 
-		//”wŒi‚Ì‰æ‘œ‚ğƒƒ‚ƒŠDC‚ÖƒRƒs[
-		//SelectObject(hMemDC, hBack);
-		//SelectObject(hMemDC, hBack1);
-
-
-		//”wŒi‚Ì•\¦
-		BitBlt(hDC,			//ƒfƒoƒCƒXƒRƒ“ƒeƒLƒXƒg
-			0, 0,			//•\¦ˆÊ’u‚˜A‚™À•W
-			640, 480,		//‰æ‘œ•A‚½‚©‚³
-			hMemDC,			//ƒƒ‚ƒŠDC
-			0, 0,			//Œ³‰æ‘œx,y,À•W
-			SRCCOPY);		//ƒRƒs[‚·‚é
+		//èƒŒæ™¯ã®ç”»åƒã‚’ãƒ¡ãƒ¢ãƒªDCã¸ã‚³ãƒ”ãƒ¼
+		//èƒŒæ™¯ã®è¡¨ç¤º
+		BitBlt(hDC,			//ãƒ‡ãƒã‚¤ã‚¹ã‚³ãƒ³ãƒ†ã‚­ã‚¹ãƒˆ
+			0, 0,			//è¡¨ç¤ºä½ç½®ï½˜ã€ï½™åº§æ¨™
+			860, 640,		//ç”»åƒå¹…ã€ãŸã‹ã•
+			hMemDC,			//ãƒ¡ãƒ¢ãƒªDC
+			0, 0,			//å…ƒç”»åƒx,y,åº§æ¨™
+			SRCCOPY);		//ã‚³ãƒ”ãƒ¼ã™ã‚‹
 
 		//SetBkMode(hDC, OPAQUE);
 		//SetBkColor(hDC, RGB(0x00, 0x00, 0x00));
-
 		SetBkMode(hDC, TRANSPARENT);
-		SetTextColor(hDC, RGB(0x00,0xAA,0x00));
-		SelectObject(hDC, hFont);
 
-		RECT rect;		//‹éŒ`H–\‘¢‘Ì		
-		//•¶š—ñ‚Ì•\¦”ÍˆÍ
-		//ƒEƒBƒ“ƒhƒE‚Ì‘å‚«‚³‚ğæ“¾
-		//RECT\‘¢‘Ì‚Ìleft‚Ætop
+
+		RECT rect;		//çŸ©å½¢å·¥äº‹æ§‹é€ ä½“		
+		//æ–‡å­—åˆ—ã®è¡¨ç¤ºç¯„å›²
+		//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®å¤§ãã•ã‚’å–å¾—
+		//RECTæ§‹é€ ä½“ã®leftã¨top
 		GetClientRect(hWnd, &rect);
-		//•\¦ŠJnˆÊ’uİ’è
+		//è¡¨ç¤ºé–‹å§‹ä½ç½®è¨­å®š
 		rect.left = 10;
 		rect.top = 20;
 		
+		//Set the dialog display region
+		RECT dialogRect;
+		dialogRect.left = rect.left + 15; dialogRect.right = rect.right - 15;
+		dialogRect.bottom = rect.bottom - 10; dialogRect.top = rect.top - (rect.top - rect.bottom)*70/100;
+		//Draw dialog display region
+		DrawRectangle(dialogRect,hDC, RGB(20,20,60),RGB(20,20,100));
 		
-		//•¶š—ñ‚Ì•\¦
+		//Set text color
+		SetTextColor(hDC, RGB(0xFF,0xFF,0xA9));
+		//Select font for text
+		SelectObject(hDC, hFont);
+		
+		//æ–‡å­—åˆ—ã®è¡¨ç¤º
+	
 		DrawText(hDC,
-			story[sceneNo],		//•\¦‚·‚é•¶š—ñ
-			-1,				//•¶š”‚ğw’èi-1‚Å‘S•”j
-			&rect,			//•\¦”ÍˆÍ
-			DT_WORDBREAK);	//Ü‚è•Ô‚µ
+			story[sceneNo],		//è¡¨ç¤ºã™ã‚‹æ–‡å­—åˆ—
+			-1,				//æ–‡å­—æ•°ã‚’æŒ‡å®šï¼ˆ-1ã§å…¨éƒ¨ï¼‰
+			&dialogRect,			//è¡¨ç¤ºç¯„å›²
+			DT_WORDBREAK);	//æŠ˜ã‚Šè¿”ã—
 
-		//‘I‘ğˆ‚Ì•\¦
+		//é¸æŠè‚¢ã®è¡¨ç¤º
 		if (dispSel)
 		{
-			SetTextColor(hDC, RGB(0xFF, 0x00, 0xFF));
+			SetTextColor(hDC, RGB(0xFF, 0xFF, 0x90));
 			for (int i = 0; i < 2; i++)
 			{
 
 				if (selNo == i + 1)
 				{
 					SetBkMode(hDC, OPAQUE);
-					SetBkColor(hDC, RGB(0xFF, 0x00, 0x00));
+					SetBkColor(hDC, RGB(0x56, 0x56, 0xA0));
 				}
 				else
 					SetBkMode(hDC, TRANSPARENT);
 				
 				TextOut(hDC,
-					50,					//‘ã•\‚˜À•W
-					120 + 60 * i,		//‘ã•\‚™À•W
-					sel[i],				//‘ã•\‚·‚é•¶š—ñ
-					lstrlen(sel[i]));	//‘ã•\‚·‚é•¶š—ñ‚ÌƒTƒCƒY
+					//Tried to center the select dialog
+					rect.left+(rect.right-rect.left)*15/100,	//ä»£è¡¨ï½˜åº§æ¨™ 
+					120 + 60 * i,		//ä»£è¡¨ï½™åº§æ¨™
+					sel[i],				//ä»£è¡¨ã™ã‚‹æ–‡å­—åˆ—
+					lstrlen(sel[i]));	//ä»£è¡¨ã™ã‚‹æ–‡å­—åˆ—ã®ã‚µã‚¤ã‚º
 			}
 		}
 
@@ -367,93 +415,93 @@ LRESULT CALLBACK WindowProc(
 
 
 int WINAPI WinMain(
-	_In_ HINSTANCE hInstance,	//ƒCƒ“ƒXƒ^ƒ“ƒX”Ô†(ƒEƒBƒ“ƒhƒE‚Ì”Ô†)
+	_In_ HINSTANCE hInstance,	//ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ç•ªå·(ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®ç•ªå·)
 	_In_opt_ HINSTANCE hPrevInstance,
 	_In_ PSTR lpCmdLine,
 	_In_ int nCmdShow)
 {
-	WNDCLASS wc;				//Window Class ƒEƒBƒ“ƒhƒEƒNƒ‰ƒX\‘¢‘Ì(Struct	ure)
-	HWND hWnd;					//Window Handler ƒEƒBƒ“ƒhƒEƒnƒ“ƒhƒ‹
-	MSG msg;					//ƒƒbƒZ[ƒW
+	WNDCLASS wc;				//Window Class ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚¯ãƒ©ã‚¹æ§‹é€ ä½“(Struct	ure)
+	HWND hWnd;					//Window Handler ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ãƒãƒ³ãƒ‰ãƒ«
+	MSG msg;					//ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
 
 	//--------------------------------------------
-	//ƒEƒBƒ“ƒhƒEƒNƒ‰ƒX“o˜^
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚¯ãƒ©ã‚¹ç™»éŒ²
 	//--------------------------------------------
-	//ƒXƒ^ƒCƒ‹‚Ì“o˜^
-	//@CS_HREDRAW Horizontal Redraw	F	…•½•ûŒü‚ÌÄ•`‰æ
-	//	CS_VREDRAW Vertical Redraw	F	‚’¼•ûŒü‚ÌÄ•`‰æ
+	//ã‚¹ã‚¿ã‚¤ãƒ«ã®ç™»éŒ²
+	//ã€€CS_HREDRAW Horizontal Redraw	ï¼š	æ°´å¹³æ–¹å‘ã®å†æç”»
+	//	CS_VREDRAW Vertical Redraw	ï¼š	å‚ç›´æ–¹å‘ã®å†æç”»
 	//
 
 	wc.style = CS_HREDRAW | CS_VREDRAW;
-	//ƒEƒBƒ“ƒhƒEŠÖ”‚Ì“o˜^
-	//DefWindowProc : ƒfƒtƒHƒ‹ƒgƒEƒBƒ“ƒhƒEŠÖ”(Œã‚Å©•ª‚Åì‚é)
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦é–¢æ•°ã®ç™»éŒ²
+	//DefWindowProc : ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã‚¦ã‚£ãƒ³ãƒ‰ã‚¦é–¢æ•°(å¾Œã§è‡ªåˆ†ã§ä½œã‚‹)
 	wc.lpfnWndProc = WindowProc;
-	//g‚í‚È‚¢(0ŒÅ’è)
+	//ä½¿ã‚ãªã„(0å›ºå®š)
 	wc.cbClsExtra = 0;
 	wc.cbWndExtra = 0;
-	//ƒCƒ“ƒXƒ^ƒ“ƒX”Ô†‚Ì“o˜^
+	//ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ç•ªå·ã®ç™»éŒ²
 	wc.hInstance = hInstance;
-	//ƒAƒCƒRƒ““o˜^
-	//nullptr : ƒfƒtƒHƒ‹ƒg
+	//ã‚¢ã‚¤ã‚³ãƒ³ç™»éŒ²
+	//nullptr : ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆ
 	wc.hIcon = nullptr;
-	//ƒJ[ƒ\ƒ‹“o˜^
-	//nullptr : ƒfƒtƒHƒ‹ƒg
+	//ã‚«ãƒ¼ã‚½ãƒ«ç™»éŒ²
+	//nullptr : ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆ
 	wc.hCursor = nullptr;
-	//ƒEƒBƒ“ƒhƒE‚Ì”wŒiF
-	// LTGRAY_BRUSH : –¾‚é‚¢ŠDF
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®èƒŒæ™¯è‰²
+	// LTGRAY_BRUSH : æ˜ã‚‹ã„ç°è‰²
 	wc.hbrBackground = (HBRUSH)GetStockObject(1);
-	//ƒƒjƒ…[‚Ì“o˜^
-	//nullptr : ƒfƒtƒHƒ‹ƒg
+	//ãƒ¡ãƒ‹ãƒ¥ãƒ¼ã®ç™»éŒ²
+	//nullptr : ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆ
 	wc.lpszMenuName = nullptr;
-	//ƒAƒvƒŠƒP[ƒVƒ‡ƒ“–¼
+	//ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³å
 	wc.lpszClassName = "MainWindow";
 
-	//ƒEƒBƒ“ƒhƒE‚ğWindows“o˜^
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚’Windowsç™»éŒ²
 	if (RegisterClass(&wc) == 0)
 	{
-		//ƒGƒ‰[ƒƒbƒZ[ƒW‚Ì•\¦
-		//MB_OK : OKƒ{ƒ^ƒ“‚Ì‚İ
-		//MB_YESNO : OKEƒLƒƒƒ“ƒZƒ‹
-		//MB_YESNOCANCEL : ƒnƒCE‚¢‚¢‚¦EƒLƒƒƒ“ƒZƒ‹
+		//ã‚¨ãƒ©ãƒ¼ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã®è¡¨ç¤º
+		//MB_OK : OKãƒœã‚¿ãƒ³ã®ã¿
+		//MB_YESNO : OKãƒ»ã‚­ãƒ£ãƒ³ã‚»ãƒ«
+		//MB_YESNOCANCEL : ãƒã‚¤ãƒ»ã„ã„ãˆãƒ»ã‚­ãƒ£ãƒ³ã‚»ãƒ«
 		MessageBoxA(nullptr,
-			"ƒEƒBƒ“ƒhƒEƒNƒ‰ƒX“o˜^¸”s",
-			"ƒGƒ‰[ƒƒbƒZ[ƒW",
+			"ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚¯ãƒ©ã‚¹ç™»éŒ²å¤±æ•—",
+			"ã‚¨ãƒ©ãƒ¼ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸",
 			MB_YESNOCANCEL);
 		return 0;
 	}
 
 	//--------------------------------------------
-	//ƒEƒBƒ“ƒhƒE‚Ìì¬
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®ä½œæˆ
 	//--------------------------------------------
 	hWnd = CreateWindow(
-		"MainWindow",		//ƒAƒvƒŠƒP[ƒVƒ‡ƒ“–¼
-		"Šî–{ƒEƒBƒ“ƒhƒE",		//ƒEƒBƒ“ƒhƒEƒ^ƒCƒgƒ‹
-		WS_OVERLAPPEDWINDOW,//•’Ê‚ÌƒEƒBƒ“ƒhƒE
-		100, 100,			//ƒEƒBƒ“ƒhƒE‚Ì•\¦ˆÊ’u(x,y)
-		640, 480,			//ƒEƒBƒ“ƒhƒE‚Ì•A‚‚³
-		nullptr,			//eƒEƒBƒ“ƒhƒE‚Ìƒnƒ“ƒhƒ‹
-		nullptr,			//ƒƒjƒ…[‚Ì
-		hInstance,			//ƒCƒ“ƒXƒ^ƒ“ƒX”Ô†
-		nullptr);			//ƒEƒBƒ“ƒhƒEì¬‚É‚Í”­¶‚·‚éƒCƒxƒ“ƒg‚É“n‚·ƒf[ƒ^
+		"MainWindow",		//ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³å
+		"åŸºæœ¬ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦",		//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚¿ã‚¤ãƒˆãƒ«
+		WS_OVERLAPPEDWINDOW,//æ™®é€šã®ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦
+		100, 100,			//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®è¡¨ç¤ºä½ç½®(x,y)
+		860, 640,			//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®å¹…ã€é«˜ã•
+		nullptr,			//è¦ªã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®ãƒãƒ³ãƒ‰ãƒ«
+		nullptr,			//ãƒ¡ãƒ‹ãƒ¥ãƒ¼ã®
+		hInstance,			//ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ç•ªå·
+		nullptr);			//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ä½œæˆæ™‚ã«ã¯ç™ºç”Ÿã™ã‚‹ã‚¤ãƒ™ãƒ³ãƒˆã«æ¸¡ã™ãƒ‡ãƒ¼ã‚¿
 	
 	if (hWnd == nullptr)
 	{
 		MessageBox(nullptr,
-			"ƒEƒBƒ“ƒhƒEì¬¸”s",
-			"ƒGƒ‰[ƒƒbƒZ[ƒW", MB_OK);
+			"ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ä½œæˆå¤±æ•—",
+			"ã‚¨ãƒ©ãƒ¼ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸", MB_OK);
 		return 0;
 	}
 	
-	//ƒEƒBƒ“ƒhƒE‚Ì•\¦
-	//SW_SHOW : •\¦‚·‚é
-	//SW_HIDE :@‰B‚·i”ñ•\¦j
+	//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®è¡¨ç¤º
+	//SW_SHOW : è¡¨ç¤ºã™ã‚‹
+	//SW_HIDE :ã€€éš ã™ï¼ˆéè¡¨ç¤ºï¼‰
 	ShowWindow(hWnd, SW_SHOW);
 
 
 
 	while (GetMessage(&msg, nullptr, 0, 0) > 0)
 	{
-		//ƒEƒBƒ“ƒhƒEŠÖ”ƒƒbƒZ[ƒW‚ğ‘—‚é
+		//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦é–¢æ•°ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã‚’é€ã‚‹
 		DispatchMessage(&msg);
 	}
 

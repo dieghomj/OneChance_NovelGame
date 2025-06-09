@@ -95,8 +95,11 @@ LRESULT CALLBACK WindowProc(
 	static HDC hMemDC;		//メモリーデバイスコンテキスト
 
 	static HFONT hFont;		//フォントハンドル
+	static HFONT hMenuFont;
 
-	static int sceneNo = 0;		//Scene Number
+	static bool menuShow = true;
+
+	static int sceneNo = -1;		//Scene Number
 
 	static bool dispSel = false;	//選択肢表切替
 	static int selNo = 1;
@@ -105,10 +108,12 @@ LRESULT CALLBACK WindowProc(
 
 	static char BGMStatus[256]; //BGMステータスメッセージ取得用
 	
+	static char menuSel[3][50 * 2];
 	static char sel[2][50 * 2]; //選択
 	static char story[11][50 * 2];
 
 	static HBITMAP hBack[5]; 
+	static HBITMAP hMenuBack;
 
 
 	
@@ -125,10 +130,12 @@ LRESULT CALLBACK WindowProc(
 		mciSendString("close BGM1", nullptr, 0, hWnd);
 
 		//Delete Background Bitmap
-		DeleteObject(hBack[sceneNo]);
+		DeleteObject(hMenuBack);
+		DeleteObject(hBack);
 
 		//Delete Font
 		DeleteObject(hFont);
+		DeleteObject(hMenuFont);
 
 		//Delete Memory Device Context Handler
 		DeleteDC(hMemDC);
@@ -141,6 +148,22 @@ LRESULT CALLBACK WindowProc(
 
 		//メモリDCの作成
 		hMemDC = CreateCompatibleDC(nullptr);
+
+		hMenuFont = CreateFont(
+			80,							//文字高
+			30,							//文字幅
+			0,							//角度
+			0,							//ベースライン角度
+			FW_BOLD,					//太さ
+			FALSE,						//
+			FALSE,						//下線
+			FALSE,						//打消し
+			SHIFTJIS_CHARSET,			//文字セット
+			OUT_DEFAULT_PRECIS,			//出力精度
+			CLIP_DEFAULT_PRECIS,		//クリップング精度
+			DEFAULT_QUALITY,			//出力品質
+			VARIABLE_PITCH | FF_ROMAN,	//	可愛ピッチとフォントファミリ
+			"HGSゴシックE");			//書体(nullptr:現在使われている書体)
 
 		hFont = CreateFont(
 			50,							//文字高
@@ -159,6 +182,13 @@ LRESULT CALLBACK WindowProc(
 			"HGSゴシックE");			//書体(nullptr:現在使われている書体)
 		
 		//背景の読み込む
+		hMenuBack = (HBITMAP)LoadImage(
+			nullptr,					//インスタンス
+			"Data\\BMP\\menu.bmp",	//ファイル名
+			IMAGE_BITMAP,				//ビットマップ
+			0, 0,						//画像のはば、たかさ（０で自動設定）
+			LR_LOADFROMFILE);			//ファイルから読み込む
+
 		hBack[0] = (HBITMAP)LoadImage(
 			nullptr,					//インスタンス
 			"Data\\BMP\\street.bmp",	//ファイル名
@@ -190,11 +220,17 @@ LRESULT CALLBACK WindowProc(
 		//文字列のコピー
 		strcpy_s(disptext, "昔々。。。");
 
+		//メニュー選択
+		strcpy_s(menuSel[0], "プレイ");
+		strcpy_s(menuSel[1], "コンティニュー");
+		//strcpy_s(menuSel[2], "普通のジャイアン");
+		//strcpy_s(menuSel[3], "普通のジャイアン");
+
 		//選択肢のテキスト
 		strcpy_s(sel[0], "きれいなジャイアン");
 		strcpy_s(sel[1], "普通のジャイアン");
 
-		strcpy_s(story[0], "こんにちは");
+		strcpy_s(story[0], "昔々。。");
 		strcpy_s(story[1], "あなたが落としたのは");
 		strcpy_s(story[2], "正直者のあなたには\nきれいなジャイアンをプレセント！");
 		strcpy_s(story[10],"?をついたあなたに\n普通のジャイアンをプレセント！！");
@@ -261,6 +297,19 @@ LRESULT CALLBACK WindowProc(
 		case VK_RETURN:			//ENTER KEY PRESSED
 			switch (sceneNo)
 			{
+			case -1:
+
+				switch (selNo){
+
+					case 1:
+						sceneNo = 0;
+						break;
+					case 2:
+						sceneNo = 0;
+						break;
+				}
+				menuShow = false;
+				 
 			case 0:
 				sceneNo = 1;
 				dispSel = true;
@@ -332,7 +381,10 @@ LRESULT CALLBACK WindowProc(
 
 	case WM_PAINT :		//ウィンドウが更新された時
 
-		SelectObject(hMemDC, hBack[sceneNo]);
+		if (menuShow)
+			SelectObject(hMemDC, hMenuBack);
+		else
+			SelectObject(hMemDC, hBack[sceneNo]);
 
 		//描画開始
 		hDC = BeginPaint(hWnd,&ps);
@@ -364,26 +416,68 @@ LRESULT CALLBACK WindowProc(
 		RECT dialogRect;
 		dialogRect.left = rect.left + 15; dialogRect.right = rect.right - 15;
 		dialogRect.bottom = rect.bottom - 10; dialogRect.top = rect.top - (rect.top - rect.bottom)*70/100;
-		//Draw dialog display region
-		DrawRectangle(dialogRect,hDC, RGB(20,20,60),RGB(20,20,100));
 		
-		//Set text color
-		SetTextColor(hDC, RGB(0xFF,0xFF,0xA9));
-		//Select font for text
-		SelectObject(hDC, hFont);
-		
-		//文字列の表示
-	
-		DrawText(hDC,
-			story[sceneNo],		//表示する文字列
-			-1,				//文字数を指定（-1で全部）
-			&dialogRect,			//表示範囲
-			DT_WORDBREAK);	//折り返し
-
-		//選択肢の表示
-		if (dispSel)
+		//When Menu is going to be displayed 
+		if (!menuShow)
 		{
-			SetTextColor(hDC, RGB(0xFF, 0xFF, 0x90));
+			//Draw dialog display region
+			DrawRectangle(dialogRect,hDC, RGB(20,20,60),RGB(20,20,100));
+		
+			//Set text color
+			SetTextColor(hDC, RGB(0xFF,0xFF,0xA9));
+			//Select font for text
+			SelectObject(hDC, hFont);
+		
+			//文字列の表示
+	
+			DrawText(hDC,
+				story[sceneNo],		//表示する文字列
+				-1,				//文字数を指定（-1で全部）
+				&dialogRect,			//表示範囲
+				DT_WORDBREAK);	//折り返し
+
+			//選択肢の表示
+			if (dispSel)
+			{
+				SetTextColor(hDC, RGB(0xFF, 0xFF, 0x90));
+				for (int i = 0; i < 2; i++)
+				{
+
+					if (selNo == i + 1)
+					{
+						SetBkMode(hDC, OPAQUE);
+						SetBkColor(hDC, RGB(0x56, 0x56, 0xA0));
+					}
+					else
+						SetBkMode(hDC, TRANSPARENT);
+
+					TextOut(hDC,
+						//Tried to center the select dialog
+						rect.left + (rect.right - rect.left) * 15 / 100,	//代表ｘ座標 
+						120 + 60 * i,		//代表ｙ座標
+						sel[i],				//代表する文字列
+						lstrlen(sel[i]));	//代表する文字列のサイズ
+				}
+			}
+
+		}
+		else
+		{
+			//Set game title text color
+			SetTextColor(hDC, RGB(0xFF, 0xFF, 0xA9));
+			//Select font for game title text
+			SelectObject(hDC, hMenuFont);
+
+			//Show game title 
+			DrawText(hDC,
+				"THE GAME",		//表示する文字列
+				-1,				//文字数を指定（-1で全部）
+				&rect,			//表示範囲
+				DT_WORDBREAK);	//折り返し
+		
+			//Set menu text color
+			SetTextColor(hDC, RGB(0xAA, 0xAA, 0x90));
+			//Show menu options
 			for (int i = 0; i < 2; i++)
 			{
 
@@ -394,13 +488,12 @@ LRESULT CALLBACK WindowProc(
 				}
 				else
 					SetBkMode(hDC, TRANSPARENT);
-				
+
 				TextOut(hDC,
-					//Tried to center the select dialog
-					rect.left+(rect.right-rect.left)*15/100,	//代表ｘ座標 
+					rect.left + (rect.right - rect.left) * 5 / 100,	//代表ｘ座標 
 					120 + 60 * i,		//代表ｙ座標
-					sel[i],				//代表する文字列
-					lstrlen(sel[i]));	//代表する文字列のサイズ
+					menuSel[i],				//代表する文字列
+					lstrlen(menuSel[i]));	//代表する文字列のサイズ
 			}
 		}
 

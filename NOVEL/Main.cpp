@@ -130,12 +130,14 @@ LRESULT CALLBACK WindowProc(
 		mciSendString("close BGM1", nullptr, 0, hWnd);
 
 		//Delete Background Bitmap
-		DeleteObject(hMenuBack);
 		DeleteObject(hBack);
+		DeleteObject(hMenuBack);
 
 		//Delete Font
 		DeleteObject(hFont);
 		DeleteObject(hMenuFont);
+		//
+		RemoveFontResourceEx("Data\\Fonts\\MyFont.ttf", FR_PRIVATE, 0);
 
 		//Delete Memory Device Context Handler
 		DeleteDC(hMemDC);
@@ -145,16 +147,22 @@ LRESULT CALLBACK WindowProc(
 		return 0;
 
 	case WM_CREATE:		//ウィンドウが生成される時
+		
+		//フォントの登録
+		// アプリ終了時は RemoveFontResourceEx で解除
+
 
 		//メモリDCの作成
 		hMemDC = CreateCompatibleDC(nullptr);
 
+		AddFontResourceEx("Data\\FONT\\MadouFutoMaruGothic.ttf", FR_PRIVATE, 0);
+		//フォントの作成
 		hMenuFont = CreateFont(
-			80,							//文字高
-			30,							//文字幅
+			150,							//文字高
+			100,							//文字幅
 			0,							//角度
 			0,							//ベースライン角度
-			FW_BOLD,					//太さ
+			FW_THIN,					//太さ
 			FALSE,						//
 			FALSE,						//下線
 			FALSE,						//打消し
@@ -163,11 +171,11 @@ LRESULT CALLBACK WindowProc(
 			CLIP_DEFAULT_PRECIS,		//クリップング精度
 			DEFAULT_QUALITY,			//出力品質
 			VARIABLE_PITCH | FF_ROMAN,	//	可愛ピッチとフォントファミリ
-			"HGSゴシックE");			//書体(nullptr:現在使われている書体)
+			"魔導太丸ゴシック");			//書体(nullptr:現在使われている書体)
 
 		hFont = CreateFont(
 			50,							//文字高
-			15,							//文字幅
+			30,							//文字幅
 			0,							//角度
 			0,							//ベースライン角度
 			FW_REGULAR,					//太さ
@@ -179,7 +187,7 @@ LRESULT CALLBACK WindowProc(
 			CLIP_DEFAULT_PRECIS,		//クリップング精度
 			DEFAULT_QUALITY,			//出力品質
 			VARIABLE_PITCH | FF_ROMAN,	//	可愛ピッチとフォントファミリ
-			"HGSゴシックE");			//書体(nullptr:現在使われている書体)
+			"魔導太丸ゴシック");			//書体(nullptr:現在使われている書体)
 		
 		//背景の読み込む
 		hMenuBack = (HBITMAP)LoadImage(
@@ -188,6 +196,15 @@ LRESULT CALLBACK WindowProc(
 			IMAGE_BITMAP,				//ビットマップ
 			0, 0,						//画像のはば、たかさ（０で自動設定）
 			LR_LOADFROMFILE);			//ファイルから読み込む
+		//画像が読み込んだかどうか確認
+		if (!hMenuBack) {
+			DWORD err = GetLastError();
+			char msg[256];
+			FormatMessageA(
+				FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+				nullptr, err, 0, msg, sizeof(msg), nullptr);
+			MessageBoxA(hWnd, msg, "menu.bmpの読み込みに失敗しました", MB_OK | MB_ICONERROR);
+		}
 
 		hBack[0] = (HBITMAP)LoadImage(
 			nullptr,					//インスタンス
@@ -381,7 +398,7 @@ LRESULT CALLBACK WindowProc(
 
 	case WM_PAINT :		//ウィンドウが更新された時
 
-		if (menuShow)
+		if (menuShow && hMenuBack)
 			SelectObject(hMemDC, hMenuBack);
 		else
 			SelectObject(hMemDC, hBack[sceneNo]);
@@ -421,7 +438,7 @@ LRESULT CALLBACK WindowProc(
 		if (!menuShow)
 		{
 			//Draw dialog display region
-			DrawRectangle(dialogRect,hDC, RGB(20,20,60),RGB(20,20,100));
+			DrawRectangle(dialogRect,hDC, RGB(10,10,10),RGB(255,255,255));
 		
 			//Set text color
 			SetTextColor(hDC, RGB(0xFF,0xFF,0xA9));
@@ -470,13 +487,15 @@ LRESULT CALLBACK WindowProc(
 
 			//Show game title 
 			DrawText(hDC,
-				"THE GAME",		//表示する文字列
+				"物語",		//表示する文字列
 				-1,				//文字数を指定（-1で全部）
 				&rect,			//表示範囲
 				DT_WORDBREAK);	//折り返し
 		
 			//Set menu text color
-			SetTextColor(hDC, RGB(0xAA, 0xAA, 0x90));
+			SetTextColor(hDC, RGB(0xFF, 0xFF, 0xFF));
+			SelectObject(hDC, hFont);
+
 			//Show menu options
 			for (int i = 0; i < 2; i++)
 			{
@@ -484,14 +503,14 @@ LRESULT CALLBACK WindowProc(
 				if (selNo == i + 1)
 				{
 					SetBkMode(hDC, OPAQUE);
-					SetBkColor(hDC, RGB(0x56, 0x56, 0xA0));
+					SetBkColor(hDC, RGB(0x00, 0x00, 0x00));
 				}
 				else
 					SetBkMode(hDC, TRANSPARENT);
 
 				TextOut(hDC,
 					rect.left + (rect.right - rect.left) * 5 / 100,	//代表ｘ座標 
-					120 + 60 * i,		//代表ｙ座標
+					220 + 60 * i,		//代表ｙ座標
 					menuSel[i],				//代表する文字列
 					lstrlen(menuSel[i]));	//代表する文字列のサイズ
 			}

@@ -248,13 +248,15 @@ LRESULT CALLBACK WindowProc(
 		//strcpy_s(menuSel[3], "普通のジャイアン");
 
 		//選択肢のテキスト
-		strcpy_s(sel[0], "きれいなジャイアン");
-		strcpy_s(sel[1], "普通のジャイアン");
+		strcpy_s(sel[0], "シーン３に進む");
+		strcpy_s(sel[1], "シーン４に進む");
 
-		strcpy_s(story[0], "昔々。。");
-		strcpy_s(story[1], "あなたが落としたのは");
-		strcpy_s(story[2], "正直者のあなたには\nきれいなジャイアンをプレセント！");
-		strcpy_s(story[10],"?をついたあなたに\n普通のジャイアンをプレセント！！");
+
+		//ストーリーのテキスト
+		strcpy_s(story[0], "シーン１");
+		strcpy_s(story[1], "シーン２");
+		strcpy_s(story[2], "シーン３");
+		strcpy_s(story[10],"シーン４");
 
 
 		//MIDIまたはmp3ファイルのオプション
@@ -310,6 +312,17 @@ LRESULT CALLBACK WindowProc(
 		case VK_LEFT:
 		case VK_RIGHT:
 		case VK_ESCAPE:
+			if (menuShow)
+			{
+				menuShow = false;	//メニューを非表示にする
+			}
+			else
+			{
+				menuShow = true;	//メニューを表示する
+				sceneNo = -1;	//メニューのシーンにする
+				dispSel = false;			//選択肢番号を初期化
+			}
+			break;
 		case 'A':
 		case 'x':
 			break;
@@ -318,20 +331,26 @@ LRESULT CALLBACK WindowProc(
 		case VK_RETURN:			//ENTER KEY PRESSED
 			switch (sceneNo)
 			{
-			case -1:
 
+			//メニューのシーン
+			case -1:
+				//メニューの表示
 				switch (selNo){
 
+					//プレイ
 					case 1:
 						sceneNo = 0;
 						break;
+					//コンティニュー
 					case 2:
 						sceneNo = 0;
 						break;
 				}
-				menuShow = false;
-				 
+				menuShow = false;	//メニューを非表示にする
+				break;
+
 			case 0:
+
 				sceneNo = 1;
 				dispSel = true;
 

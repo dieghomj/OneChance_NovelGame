@@ -97,23 +97,26 @@ LRESULT CALLBACK WindowProc(
 	static HFONT hFont;		//フォントハンドル
 	static HFONT hMenuFont;
 
-	static bool menuShow = true;
+	static int currWidth = 0;	//ウィンドウの幅
+	static int currHeight = 0;	//ウィンドウの高さ
+
+	static bool menuShow = true;	//メニュー表示フラグ
 
 	static int sceneNo = -1;		//Scene Number
 
 	static bool dispSel = false;	//選択肢表切替
-	static int selNo = 1;
+	static int selNo = 1;			//選択肢番号
 
 	static int BGMNo = 1; //BGM番号
 
 	static char BGMStatus[256]; //BGMステータスメッセージ取得用
 	
-	static char menuSel[3][50 * 2];
+	static char menuSel[3][50 * 2];	//メニュー選択肢
 	static char sel[2][50 * 2]; //選択
-	static char story[11][50 * 2];
+	static char story[11][50 * 2]; //ストーリー用文字列
 
-	static HBITMAP hBack[5]; 
-	static HBITMAP hMenuBack;
+	static HBITMAP hBack[5]; 	//背景画像ハンドル
+	static HBITMAP hMenuBack;	//背景画像ハンドル（メニュー用）
 
 
 	
@@ -129,15 +132,16 @@ LRESULT CALLBACK WindowProc(
 		mciSendString("close BGM2", nullptr, 0, hWnd);
 		mciSendString("close BGM1", nullptr, 0, hWnd);
 
-		//Delete Background Bitmap
+		//Delete Background Bitmap	
 		DeleteObject(hBack);
 		DeleteObject(hMenuBack);
 
 		//Delete Font
 		DeleteObject(hFont);
 		DeleteObject(hMenuFont);
-		//
-		RemoveFontResourceEx("Data\\Fonts\\MyFont.ttf", FR_PRIVATE, 0);
+		
+		//Delete Font Resource
+		RemoveFontResourceEx("Data\\FONT\\魔導太丸ゴシック.ttf", FR_PRIVATE, 0);
 
 		//Delete Memory Device Context Handler
 		DeleteDC(hMemDC);
@@ -158,7 +162,7 @@ LRESULT CALLBACK WindowProc(
 		AddFontResourceEx("Data\\FONT\\MadouFutoMaruGothic.ttf", FR_PRIVATE, 0);
 		//フォントの作成
 		hMenuFont = CreateFont(
-			150,							//文字高
+			120,							//文字高
 			100,							//文字幅
 			0,							//角度
 			0,							//ベースライン角度
@@ -174,7 +178,7 @@ LRESULT CALLBACK WindowProc(
 			"魔導太丸ゴシック");			//書体(nullptr:現在使われている書体)
 
 		hFont = CreateFont(
-			50,							//文字高
+			40,							//文字高
 			30,							//文字幅
 			0,							//角度
 			0,							//ベースライン角度
@@ -397,7 +401,8 @@ LRESULT CALLBACK WindowProc(
 		return 0;
 
 	case WM_PAINT :		//ウィンドウが更新された時
-
+		
+		//Check if menu has to be shown
 		if (menuShow && hMenuBack)
 			SelectObject(hMemDC, hMenuBack);
 		else
@@ -406,14 +411,29 @@ LRESULT CALLBACK WindowProc(
 		//描画開始
 		hDC = BeginPaint(hWnd,&ps);
 
-		//背景の画像をメモリDCへコピー
-		//背景の表示
-		BitBlt(hDC,			//デバイスコンテキスト
-			0, 0,			//表示位置ｘ、ｙ座標
-			860, 640,		//画像幅、たかさ
-			hMemDC,			//メモリDC
-			0, 0,			//元画像x,y,座標
-			SRCCOPY);		//コピーする
+		//描画の準備
+		RECT refreshRect;
+		GetClientRect(hWnd, &refreshRect)
+			;
+		//ウィンドウの大きさを取得
+		currWidth = refreshRect.right - refreshRect.left;
+		currHeight = refreshRect.bottom - refreshRect.top;
+		
+		// StretchBltで拡大・縮小描画
+		StretchBlt(
+			hDC, 0, 0, currWidth, currHeight, // 描画先（拡大後のサイズ）
+			hMemDC, 0, 0, 860, 640,   // 元画像サイズ（例: 860x640）
+			SRCCOPY
+		);
+
+		////背景の画像をメモリDCへコピー
+		////背景の表示
+		//BitBlt(hDC,			//デバイスコンテキスト
+		//	0, 0,			//表示位置ｘ、ｙ座標
+		//	currWidth, currHeight,		//画像幅、たかさ
+		//	hMemDC,			//メモリDC
+		//	0, 0,			//元画像x,y,座標
+		//	SRCCOPY);		//コピーする
 
 		//SetBkMode(hDC, OPAQUE);
 		//SetBkColor(hDC, RGB(0x00, 0x00, 0x00));
@@ -431,8 +451,8 @@ LRESULT CALLBACK WindowProc(
 		
 		//Set the dialog display region
 		RECT dialogRect;
-		dialogRect.left = rect.left + 15; dialogRect.right = rect.right - 15;
-		dialogRect.bottom = rect.bottom - 10; dialogRect.top = rect.top - (rect.top - rect.bottom)*70/100;
+		dialogRect.left = rect.left + 10; dialogRect.right = rect.right - 10;
+		dialogRect.bottom = rect.bottom - 10; dialogRect.top = rect.top + currHeight*80/100;
 		
 		//When Menu is going to be displayed 
 		if (!menuShow)
@@ -441,12 +461,15 @@ LRESULT CALLBACK WindowProc(
 			DrawRectangle(dialogRect,hDC, RGB(10,10,10),RGB(255,255,255));
 		
 			//Set text color
-			SetTextColor(hDC, RGB(0xFF,0xFF,0xA9));
+			SetTextColor(hDC, RGB(0xFF, 0xFF, 0xFF));
 			//Select font for text
 			SelectObject(hDC, hFont);
 		
 			//文字列の表示
 	
+			dialogRect.top += 20;
+			dialogRect.left += 20;
+
 			DrawText(hDC,
 				story[sceneNo],		//表示する文字列
 				-1,				//文字数を指定（-1で全部）
@@ -456,14 +479,14 @@ LRESULT CALLBACK WindowProc(
 			//選択肢の表示
 			if (dispSel)
 			{
-				SetTextColor(hDC, RGB(0xFF, 0xFF, 0x90));
+				SetTextColor(hDC, RGB(0xFF, 0xFF, 0xFF));
 				for (int i = 0; i < 2; i++)
 				{
 
 					if (selNo == i + 1)
 					{
 						SetBkMode(hDC, OPAQUE);
-						SetBkColor(hDC, RGB(0x56, 0x56, 0xA0));
+						SetBkColor(hDC, RGB(0x9A, 0x5A, 0x9A));
 					}
 					else
 						SetBkMode(hDC, TRANSPARENT);
@@ -481,7 +504,7 @@ LRESULT CALLBACK WindowProc(
 		else
 		{
 			//Set game title text color
-			SetTextColor(hDC, RGB(0xFF, 0xFF, 0xA9));
+			SetTextColor(hDC, RGB(0x9A, 0x5A, 0x9A));
 			//Select font for game title text
 			SelectObject(hDC, hMenuFont);
 
@@ -503,7 +526,7 @@ LRESULT CALLBACK WindowProc(
 				if (selNo == i + 1)
 				{
 					SetBkMode(hDC, OPAQUE);
-					SetBkColor(hDC, RGB(0x00, 0x00, 0x00));
+					SetBkColor(hDC, RGB(0x9A, 0x5A, 0x9A));
 				}
 				else
 					SetBkMode(hDC, TRANSPARENT);

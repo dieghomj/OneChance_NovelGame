@@ -4,6 +4,7 @@
 #pragma comment(lib, "winmm.lib")		//音声再生で使用する
 
 static char gameTitle[16] = "タイトル";
+static bool closeWindowFlag = false;
 
 //Tool Functions
 
@@ -41,7 +42,7 @@ void DrawRectangle(RECT rc, HDC hDC, COLORREF bg, COLORREF outline)
 	HPEN hOldPen = (HPEN)SelectObject(hDC, hPen);
 
 	Rectangle(hDC, rc.left, rc.top, rc.right, rc.bottom);
-
+		
 	// Select the original objects back into the DC
 	SelectObject(hDC, hOldBrush);
 	SelectObject(hDC, hOldPen);
@@ -49,6 +50,12 @@ void DrawRectangle(RECT rc, HDC hDC, COLORREF bg, COLORREF outline)
 	// Delete the custom objects to free memory
 	DeleteObject(hBrush);
 	DeleteObject(hPen);
+}
+
+
+void ResetStoryLine(int* storyLine, static char story)
+{
+	
 }
 
 
@@ -82,6 +89,8 @@ void stopBGM(int BGMNo, HWND hWnd)
 	mciSendStringA(tmp, nullptr, 0, hWnd);
 }
 
+void NextScene(int& sceneNo, bool& dispSel, int& dispNo, bool& menuShow);
+
 
 LRESULT CALLBACK WindowProc(
 	HWND hWnd,		//Window Handler
@@ -114,8 +123,9 @@ LRESULT CALLBACK WindowProc(
 	static char BGMStatus[256]; //BGMステータスメッセージ取得用
 	
 	static char menuSel[3][50 * 2];	//メニュー選択肢
-	static char sel[2][50 * 2]; //選択
+	static char sel[100][50 * 2]; //選択
 
+	static char inScreenText[200 * 3] = ".......";	//画面に表示する文字列
 	static bool clearText = false;
 
 	static char story[50][200 * 3]; //ストーリー用文字列
@@ -207,15 +217,16 @@ LRESULT CALLBACK WindowProc(
 			IMAGE_BITMAP,				//ビットマップ
 			0, 0,						//画像のはば、たかさ（０で自動設定）
 			LR_LOADFROMFILE);			//ファイルから読み込む
-		//画像が読み込んだかどうか確認
-		if (!hMenuBack) {
-			DWORD err = GetLastError();
-			char msg[256];
-			FormatMessageA(
-				FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-				nullptr, err, 0, msg, sizeof(msg), nullptr);
-			MessageBoxA(hWnd, msg, "menu.bmpの読み込みに失敗しました", MB_OK | MB_ICONERROR);
-		}
+		
+		////画像が読み込んだかどうか確認
+		//if (!hMenuBack) {
+		//	DWORD err = GetLastError();
+		//	char msg[256];
+		//	FormatMessageA(
+		//		FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		//		nullptr, err, 0, msg, sizeof(msg), nullptr);
+		//	MessageBoxA(hWnd, msg, "menu.bmpの読み込みに失敗しました", MB_OK | MB_ICONERROR);
+		//}
 
 		hBack[0] = (HBITMAP)LoadImage(
 			nullptr,					//インスタンス
@@ -224,7 +235,7 @@ LRESULT CALLBACK WindowProc(
 			0,0,						//画像のはば、たかさ（０で自動設定）
 			LR_LOADFROMFILE);			//ファイルから読み込む
 
-		hBack[10] = (HBITMAP)LoadImage(
+		hBack[1] = (HBITMAP)LoadImage(
 			nullptr,					//インスタンス
 			"Data\\BMP\\guards1.bmp",	//ファイル名
 			IMAGE_BITMAP,				//ビットマップ
@@ -245,9 +256,6 @@ LRESULT CALLBACK WindowProc(
 			0, 0,					//画像のはば、たかさ（０で自動設定）
 			LR_LOADFROMFILE);			//ファイルから読み込む
 
-		//文字列のコピー
-		strcpy_s(disptext, "昔々。。。");
-
 		//メニュー選択
 		strcpy_s(menuSel[0], "開始");
 		strcpy_s(menuSel[1], "終了");
@@ -255,16 +263,21 @@ LRESULT CALLBACK WindowProc(
 		//strcpy_s(menuSel[3], "普通のジャイアン");
 
 		//選択肢のテキスト
-		strcpy_s(sel[0], "きれいなジャイアン");
-		strcpy_s(sel[1], "普通のジャイアン");
+		strcpy_s(sel[1], "左の門番に近づく");
+		strcpy_s(sel[2], "右の門番に近づく");
+		strcpy_s(sel[1], "右の門番に近づく");
+		strcpy_s(sel[1], "右の門番に近づく");
+		strcpy_s(sel[1], "右の門番に近づく");
+		strcpy_s(sel[1], "右の門番に近づく");
 
-		strcpy_s(story[0], "あなたは冷たいそよ風で目を覚まし、人生の最後の響きが夢のように…\n消えていく。気がつくと、そこはリンボーの世界だった。\n目の前には、煙のように姿を変える2人の謎めいた人物が立っている。\n一人は真実のみを語り、もう一人は嘘のみを語る。\nあなたの目標は、自分の価値を証明し、進むべき道を見つけることだ。\n重苦しい沈黙があなたを襲い、過去の行いの重みが空気にまとわりついている。\nあなたは伝説を知っている：門番の1人に1つだけ質問することができる。\nあなたの運命は天秤にかかっている。");
 
-		strcpy_s(story[1], "あなたが落としたのは");
-		strcpy_s(story[2], "正直者のあなたには\nきれいなジャイアンをプレセント！");
-		strcpy_s(story[10],"?をついたあなたに\n普通のジャイアンをプレセント！！");
+		strcpy_s(story[0], "あなたは冷たいそよ風で目を覚まし、人生の最後の響きが夢のように…\n消えていく。気がつくと、そこはリンボーの世界だった。\n目の前には、煙のように姿を変える2人の謎めいた人物が立っている。\n一人は真実のみを語り、もう一人は嘘のみを語る。\nあなたの目標は、自分の価値を証明し、進むべき道を見つけることだ。");
+		strcpy_s(story[1], "重苦しい沈黙があなたを襲い、過去の行いの重みが空気にまとわりついている。\nあなたは伝説を知っている：門番の1人に1つだけ質問することができる。\nあなたの運命は天秤にかかっている。");
 
-		memset(storyLine, -1, sizeof(storyLine)); //ストーリーの行番号を初期化
+		strcpy_s(story[4], "あなたは左手の人物に向かって足を踏み出す。その姿に光の揺らめきが舞う。");
+		strcpy_s(story[5],"あなたは右手の人影に向かって足を踏み出す。まるであなたを観察するかのように、その影が濃くなる。");
+		
+		memset(storyLine, 0, sizeof(storyLine)); //ストーリーの行番号を初期化
 
 		for (int i = 0; i < 50; i++)
 		{
@@ -274,9 +287,6 @@ LRESULT CALLBACK WindowProc(
 					storyLine[i]++;	//ストーリーの行番カウンター
 			}
 		}
-
-
-		printf("---------->%d", storyLine[0]);
 
 		//MIDIまたはmp3ファイルのオプション
 		mciSendString("open Data\\BGM\\Holiday.mp3 alias BGM1", nullptr, 0, hWnd);
@@ -352,103 +362,113 @@ LRESULT CALLBACK WindowProc(
 		
 		case VK_RETURN:			//ENTER KEY PRESSED
 			
-		if (storyLine[sceneNo] > 0)
+		if (sceneNo == -1)
 		{
-			storyLine[sceneNo]--;	//ストーリーの行番号を減らす
+			menuShow = true;
+		}
+
+		if (sceneNo > -1 && !dispSel && storyLine[sceneNo] >= 0)
+		{
+			--storyLine[sceneNo];	//ストーリーの行番号を減らす
 			clearText = true;	//テキストクリアフラグを立てる
+
+			memset(inScreenText, ' ', sizeof(inScreenText));
+
+			for (int i = lastLine; i < 200 * 3; i++)
+			{
+				if (story[sceneNo][i] == '\n')
+				{
+					lastLine = i + 1;	//ストーリーの行番号を更新
+					break;
+				}
+				inScreenText[i - lastLine] = story[sceneNo][i];
+			}
+
 			break;
 		}
 
+		memset(inScreenText, ' ', sizeof(inScreenText));
 		clearText = false;
 		lastLine = 0;
-		switch (sceneNo)
-		{
-			case -1:
-				if (!menuShow)
-					break;
-				switch (selNo){
+		NextScene(sceneNo, dispSel, selNo, menuShow);
 
-					case 1:
-						sceneNo = 0;
-						break;
-					case 2:
-						DestroyWindow(hWnd);	//ウィンドウを破棄
-						break;
-				}
-				menuShow = false;
-				break;
-			case 0:
 
-				sceneNo = 1;
-				dispSel = true;	//選択肢表示フラグを立てる
+		//switch (sceneNo)
+		//{
 
-				//BGMの停止
-				stopBGM(BGMNo, hWnd);
+	//	case 0:
+	//		//BGMの停止
+	//		stopBGM(BGMNo, hWnd);
 
-				//BGMの再生
-				BGMNo = playBGM(2, hWnd);
-				break;
+	//		//BGMの再生
+	//		BGMNo = playBGM(2, hWnd);
+	//		break;
 
-			case 1:
-				if (selNo == 1)
-				{
-					sceneNo = 2;
-					//waveファイルの再生
-					PlaySound("Data\\WAV\\GianVoice.wav",
-						nullptr,
-						SND_ASYNC | SND_FILENAME | SND_RING);
-						//SND_ASYNC			:
-						//SND_FILENAME		:
-						//SND_LOOP			:
-						// 
-					//BGMの停止
-					stopBGM(BGMNo, hWnd);
-					//BGMの再生
-					BGMNo = playBGM(BGMNo,hWnd);
-				}
-				else
-				{
-					sceneNo = 10;
+	//		//case 1:
+	//		//	if (selNo == 1)
+	//		//	{
+	//		//		sceneNo = 2;
+	//		//		//waveファイルの再生
+	//		//		PlaySound("Data\\WAV\\GianVoice.wav",
+	//		//			nullptr,
+	//		//			SND_ASYNC | SND_FILENAME | SND_RING);
+	//		//			//SND_ASYNC			:
+	//		//			//SND_FILENAME		:
+	//		//			//SND_LOOP			:
+	//		//			// 
+	//		//		//BGMの停止
+	//		//		stopBGM(BGMNo, hWnd);
+	//		//		//BGMの再生
+	//		//		BGMNo = playBGM(BGMNo,hWnd);
+	//		//	}
+	//		//	else
+	//		//	{
+	//		//		sceneNo = 10;
 
-					//BGMの停止
-					stopBGM(BGMNo, hWnd);
-					//BGMの再生
-					playBGM(4, hWnd);
-					BGMNo = 4;
-				}
-				
-				dispSel = false;
-				break;
+	//		//		//BGMの停止
+	//		//		stopBGM(BGMNo, hWnd);
+	//		//		//BGMの再生
+	//		//		playBGM(4, hWnd);
+	//		//		BGMNo = 4;
+	//		//	}
+	//		//	
+	//		//	dispSel = false;
+	//		//	break;
 
-			case 2:
-				sceneNo = -1;
+	//		//case 2:
+	//		//	sceneNo = -1;
 
-				//wave再生停止
-				PlaySound(nullptr,nullptr,SND_PURGE);
-				
-				//BGMの停止
-				stopBGM(BGMNo, hWnd);
-				//BGMの再生
-				BGMNo = playBGM(1,hWnd);
-				break;
-			case 10:
-				sceneNo = -1;
-				//BGMの停止
-				stopBGM(BGMNo, hWnd);
-				//BGMの再生
-				BGMNo = playBGM(1,hWnd);
+	//		//	//wave再生停止
+	//		//	PlaySound(nullptr,nullptr,SND_PURGE);
+	//		//	
+	//		//	//BGMの停止
+	//		//	stopBGM(BGMNo, hWnd);
+	//		//	//BGMの再生
+	//		//	BGMNo = playBGM(1,hWnd);
+	//		//	break;
+	//		//case 10:
+	//		//	sceneNo = -1;
+	//		//	//BGMの停止
+	//		//	stopBGM(BGMNo, hWnd);
+	//		//	//BGMの再生
+	//		//	BGMNo = playBGM(1,hWnd);
 
-				break;		
-			
-			}
-
-		}
+	//		//	break;	
+	//		// 	
+	//	}
+	}
 
 		InvalidateRect(hWnd, nullptr, FALSE);
 		return 0;
 
 	case WM_PAINT :		//ウィンドウが更新された時
 		
+
+		if (closeWindowFlag)
+		{
+			DestroyWindow(hWnd);
+		}
+
 		//Check if menu has to be shown
 		if (menuShow && hMenuBack)
 			SelectObject(hMemDC, hMenuBack);
@@ -518,20 +538,12 @@ LRESULT CALLBACK WindowProc(
 
 			if (clearText)
 			{
-				InvalidateRect(hWnd, nullptr, FALSE); // Request redraw
 				clearText = false;
+				InvalidateRect(hWnd, nullptr, FALSE); // Request redraw
 			}
 
-			char inScreenText[200 * 3];	//画面に表示する文字列
-			for (int i = lastLine; i < 200 * 3; i++)
-			{
-				if (story[sceneNo][i] == '\n')
-				{
-					lastLine = i+1;	//ストーリーの行番号を更新
-					break;
-				}
-				inScreenText[i - lastLine] = story[sceneNo][i];
-			}
+			
+			
 
 			DrawText(hDC,
 				inScreenText,		//表示する文字列
@@ -546,10 +558,10 @@ LRESULT CALLBACK WindowProc(
 			if (dispSel)
 			{
 				SetTextColor(hDC, RGB(0xFF, 0xFF, 0xFF));
-				for (int i = 0; i < 2; i++)
+				for (int i = sceneNo; i < sceneNo + 2; i++)
 				{
 
-					if (selNo == i + 1)
+					if (selNo == i-sceneNo + 1)
 					{
 						SetBkMode(hDC, OPAQUE);
 						SetBkColor(hDC, RGB(0x8B, 0x8B, 0x8B));
@@ -558,7 +570,7 @@ LRESULT CALLBACK WindowProc(
 						SetBkMode(hDC, TRANSPARENT);
 
 					TextOut(hDC,
-						//Tried to center the select dialog
+						//Tried to center the select dialog text
 						rect.left + (rect.right - rect.left) * 15 / 100,	//代表ｘ座標 
 						120 + 60 * i,		//代表ｙ座標
 						sel[i],				//代表する文字列
@@ -710,3 +722,65 @@ int WINAPI WinMain(
 	return 0;
 }
 
+void NextScene(int &sceneNo, bool &dispSel, int &selNo, bool &menuShow)
+{
+	
+	switch (sceneNo)
+	{
+	case -1:
+		menuShow = true;
+		switch (selNo) {
+
+		case 1:
+			sceneNo = 0;
+			break;
+		case 2:
+			closeWindowFlag = true;	//ウィンドウを破棄
+			break;
+		}
+		menuShow = false;
+		break;
+	case 0:
+		sceneNo = 1;
+		dispSel = true;
+		break;
+	case 1:
+		sceneNo = 2;
+		switch (selNo) {
+
+		case 1:
+
+			sceneNo = 4;
+			dispSel = false;
+			break;
+		case 2:
+			
+			sceneNo = 5;
+			dispSel = false;
+			break;
+		}
+		break;
+	case 2:
+	case 4:
+		sceneNo = -1;
+		break;
+	case 5:
+		sceneNo = -1;
+		break;
+	case 6:
+	case 7:
+	case 8:
+	case 9:
+	case 10:
+	case 11:
+	case 12:
+	case 13:
+	case 50:
+		sceneNo = -1;
+		break;
+	default:
+		printf("Next scene not found");
+		break;
+
+	}
+}

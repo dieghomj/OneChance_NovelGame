@@ -2,7 +2,7 @@
 
 ## 概要
 
-**OneCance** は、Windows API（Win32）を用いてC++で作成された短編ビジュアルノベルゲームです。  
+**OneChance** は、Windows API（Win32）を用いてC++で作成された短編ビジュアルノベルゲームです。  
 
 ## 特徴
 

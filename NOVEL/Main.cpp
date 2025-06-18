@@ -1,9 +1,9 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <windows.h> 
 //ライブラリ読込
 #pragma comment(lib, "winmm.lib")		//音声再生で使用する
 
-static char gameTitle[16] = "タイトル";
+static char gameTitle[16] = "ONe cHAncE";
 static bool closeWindowFlag = false;
 
 //Tool Functions
@@ -89,7 +89,7 @@ void stopBGM(int BGMNo, HWND hWnd)
 	mciSendStringA(tmp, nullptr, 0, hWnd);
 }
 
-void NextScene(int& sceneNo, bool& dispSel, int& dispNo, bool& menuShow);
+void NextScene(HWND& hWnd, int& sceneNo, int& dispNo, bool& menuShow, bool& questionFlag, int& BGMNo);
 
 
 LRESULT CALLBACK WindowProc(
@@ -113,9 +113,11 @@ LRESULT CALLBACK WindowProc(
 
 	static bool menuShow = true;	//メニュー表示フラグ
 
+	static int lastScene = -1;
 	static int sceneNo = -1;		//Scene Number
 
-	static bool dispSel = false;	//選択肢表切替
+	static bool dispSelFlag = false;	
+	static bool dispSel[51];	//選択肢表切替
 	static int selNo = 1;			//選択肢番号
 
 	static int BGMNo = 1; //BGM番号
@@ -128,11 +130,13 @@ LRESULT CALLBACK WindowProc(
 	static char inScreenText[200 * 3] = ".......";	//画面に表示する文字列
 	static bool clearText = false;
 
-	static char story[50][200 * 3]; //ストーリー用文字列
+	static bool questionFlag = false; //重要な質問かどうか
+
+	static char story[52][200 * 3]; //ストーリー用文字列
 	static int storyLine[50]; //ストーリー用行番号
 	static int lastLine = 0;
 
-	static HBITMAP hBack[5]; 	//背景画像ハンドル
+	static HBITMAP hBack[52]; 	//背景画像ハンドル
 	static HBITMAP hMenuBack;	//背景画像ハンドル（メニュー用）
 
 
@@ -144,10 +148,11 @@ LRESULT CALLBACK WindowProc(
 		//Destroying has to be done in the opposite order to how it was created!!
 
 		//mp3のクローズ
-		mciSendString("close BGM4", nullptr, 0, hWnd);
-		mciSendString("close BGM3", nullptr, 0, hWnd);
-		mciSendString("close BGM2", nullptr, 0, hWnd);
+		mciSendString("close BGM10", nullptr, 0, hWnd);
+		mciSendString("close BGM11", nullptr, 0, hWnd);
+		mciSendString("close BGM5", nullptr, 0, hWnd);
 		mciSendString("close BGM1", nullptr, 0, hWnd);
+		mciSendString("close BGM0", nullptr, 0, hWnd);
 
 		//Delete Background Bitmap	
 		DeleteObject(hBack);
@@ -213,7 +218,7 @@ LRESULT CALLBACK WindowProc(
 		//背景の読み込む
 		hMenuBack = (HBITMAP)LoadImage(
 			nullptr,					//インスタンス
-			"Data\\BMP\\menu.bmp",	//ファイル名
+			"Data\\BMP\\menu.bmp",		//ファイル名
 			IMAGE_BITMAP,				//ビットマップ
 			0, 0,						//画像のはば、たかさ（０で自動設定）
 			LR_LOADFROMFILE);			//ファイルから読み込む
@@ -242,16 +247,67 @@ LRESULT CALLBACK WindowProc(
 			0, 0,						//画像のはば、たかさ（０で自動設定）
 			LR_LOADFROMFILE);
 
-		hBack[20] = (HBITMAP)LoadImage(
+		hBack[6] = (HBITMAP)LoadImage(
 			nullptr,					//インスタンス
-			"Data\\BMP\\heaven.bmp",	//ファイル名
+			"Data\\BMP\\leftguard.bmp",	//ファイル名
+			IMAGE_BITMAP,				//ビットマップ
+			0, 0,						//画像のはば、たかさ（０で自動設定）
+			LR_LOADFROMFILE);
+
+		hBack[9] = (HBITMAP)LoadImage(
+			nullptr,					//インスタンス
+			"Data\\BMP\\rightguard.bmp",	//ファイル名
+			IMAGE_BITMAP,				//ビットマップ
+			0, 0,						//画像のはば、たかさ（０で自動設定）
+			LR_LOADFROMFILE);
+
+		hBack[11] = (HBITMAP)LoadImage(
+			nullptr,					//インスタンス
+			"Data\\BMP\\pointToDoor.bmp",	//ファイル名
+			IMAGE_BITMAP,				//ビットマップx
+			0, 0,						//画像のはば、たかさ（０で自動設定）
+			LR_LOADFROMFILE);			//ファイルから読み込む
+		hBack[14] = (HBITMAP)LoadImage(
+			nullptr,					//インスタンス
+			"Data\\BMP\\pointToDoor.bmp",	//ファイル名
+			IMAGE_BITMAP,				//ビットマップx
+			0, 0,						//画像のはば、たかさ（０で自動設定）
+			LR_LOADFROMFILE);			//ファイルから読み込む
+		hBack[16] = (HBITMAP)LoadImage(
+			nullptr,					//インスタンス
+			"Data\\BMP\\pointToDoor.bmp",	//ファイル名
+			IMAGE_BITMAP,				//ビットマップx
+			0, 0,						//画像のはば、たかさ（０で自動設定）
+			LR_LOADFROMFILE);			//ファイルから読み込む
+		hBack[19] = (HBITMAP)LoadImage(
+			nullptr,					//インスタンス
+			"Data\\BMP\\pointToDoor.bmp",	//ファイル名
 			IMAGE_BITMAP,				//ビットマップx
 			0, 0,						//画像のはば、たかさ（０で自動設定）
 			LR_LOADFROMFILE);			//ファイルから読み込む
 
-		hBack[30] = (HBITMAP)LoadImage(
+		hBack[49] = (HBITMAP)LoadImage(
 			nullptr,					//インスタンス
-			"Data\\BMP\\backdoor.bmp",	//ファイル名
+			"Data\\BMP\\heaven.bmp",	//ファイル名
+			IMAGE_BITMAP,				//ビットマップ
+			0, 0,					//画像のはば、たかさ（０で自動設定）
+			LR_LOADFROMFILE);			//ファイルから読み込む
+		hBack[50] = (HBITMAP)LoadImage(
+			nullptr,					//インスタンス
+			"Data\\BMP\\gian.bmp",	//ファイル名
+			IMAGE_BITMAP,				//ビットマップ
+			0, 0,					//画像のはば、たかさ（０で自動設定）
+			LR_LOADFROMFILE);			//ファイルから読み込む
+
+		hBack[47] = (HBITMAP)LoadImage(
+			nullptr,					//インスタンス
+			"Data\\BMP\\hell.bmp",	//ファイル名
+			IMAGE_BITMAP,				//ビットマップ
+			0, 0,					//画像のはば、たかさ（０で自動設定）
+			LR_LOADFROMFILE);			//ファイルから読み込む
+		hBack[48] = (HBITMAP)LoadImage(
+			nullptr,					//インスタンス
+			"Data\\BMP\\evilGian.bmp",	//ファイル名
 			IMAGE_BITMAP,				//ビットマップ
 			0, 0,					//画像のはば、たかさ（０で自動設定）
 			LR_LOADFROMFILE);			//ファイルから読み込む
@@ -263,25 +319,73 @@ LRESULT CALLBACK WindowProc(
 		//strcpy_s(menuSel[3], "普通のジャイアン");
 
 		//選択肢のテキスト
+		//SCENE 1
 		strcpy_s(sel[1], "左の門番に近づく");
 		strcpy_s(sel[2], "右の門番に近づく");
-		strcpy_s(sel[6], "どの道を進むのか？");
-		strcpy_s(sel[7], "もう一人の門番に、どの道が先に続いているのか尋ねるとしたら、彼らは何と答えるだろう？");
-		strcpy_s(sel[9], "どの道を進むのか？");
-		strcpy_s(sel[10], "もう一人の門番に、どの道が先に続いているのか尋ねるとしたら、彼らは何と答えるだろう？");
 
-		//スクリプト
+		//SCENE 6 LEFT GUARD
+		strcpy_s(sel[6], "どの道を進むのか？");
+		strcpy_s(sel[7], "向こうの番人に正しい道を問えば、何と答えるだろう？");
+		
+		//SCENE 9 RIGHT GUARD
+		strcpy_s(sel[9], "どの道を進むのか？");
+		strcpy_s(sel[10], "もう一人の番人に道尋ねれば、何と応えるだろうか。");
+
+		//SCENE 11 LEFT GUARD	DIRECT QUESTION
+		strcpy_s(sel[11], "番人が指し示した道を進む。");
+		strcpy_s(sel[12], "あえて逆の道を選ぶ。");
+
+		//SCENE 14 RIGHT GUARD	DIRECT QUESTION
+		strcpy_s(sel[14], "番人が指し示した道を進む。");
+		strcpy_s(sel[15], "あえて逆の道を選ぶ。");
+
+		//SCENE 16 LEFT GUARD	INDIRECT QUESTION	
+		strcpy_s(sel[16], "番人が告げた道を進む。");
+		strcpy_s(sel[17], "番人が告げし道とは異なる方を選ぶ");
+
+		//SCENE 19 RIGHT GUARD INDIRECT QUESTION	
+		strcpy_s(sel[19], "番人が告げた道を進む。");
+		strcpy_s(sel[20], "番人が告げし道とは異なる方を選ぶ");
+		
+		//ストーリーのテキスト
 		strcpy_s(story[0], "あなたは冷たいそよ風で目を覚まし、人生の最後の響きが夢のように…\n消えていく。気がつくと、そこはリンボーの世界だった。\n目の前には、煙のように姿を変える2人の謎めいた人物が立っている。\n一人は真実のみを語り、もう一人は嘘のみを語る。\nあなたの目標は、自分の価値を証明し、進むべき道を見つけることだ。");
 		strcpy_s(story[1], "重苦しい沈黙があなたを襲い、過去の行いの重みが空気にまとわりついている。\nあなたは伝説を知っている：門番の1人に1つだけ質問することができる。\nあなたの運命は天秤にかかっている。");
 
-		strcpy_s(story[4], "あなたは左手の人物に向かって足を踏み出す。その姿に光の揺らめきが舞う。\nご質問どうぞ");
-		strcpy_s(story[8], "あなたは右手の人影に向かって足を踏み出す。まるであなたを観察するかのように、その影が濃くなる。\nご質問どうぞ");
+		strcpy_s(story[4], "あなたは左手の人物に向かって足を踏み出す。その姿に光の揺らめきが舞う。");
+		strcpy_s(story[8], "あなたは右手の人影に向かって足を踏み出す。まるであなたを観察するかのように、その影が濃くなる。");
 
-		strcpy_s(story[6], "...");
-		strcpy_s(story[9], "...");
+		strcpy_s(story[6], "ご質問どうぞ");
+		strcpy_s(story[9], "ご質問どうぞ");
+		//DIRECT QUESTION TRUTH TELLER
+		strcpy_s(story[11], "選ばれし番人は、あなたへ首を傾げた。\n左の番人： その道は、先へ通ず\n冷たい不安に心が縛られる。\nまだどの道が正しいのかも分からない。\n	唯一の問いは、もう使ってしまった。"); // THIS IS THE CORRECT PATH	
+		
+		//DIRECT QUESTION LIAR
+		strcpy_s(story[14], "番人があなたの方へ顔を向けた。\n 右の番人：　その道こそが、先へ続く。\n冷たい不安に心が縛られる。\nまだどの道が正しいのかも分からない。\n	唯一の問いは、もう使ってしまった。");	
+		
+
+		//INDERECT QUESTION TRUTH TELLER
+		strcpy_s(story[16], "左の番人：左の道こそ、先へ続くと告げるだろう。\nその答えを慎重に吟味する。そして、選び取る。");
+		
+		//INDERECT QUESTION LIAR
+		strcpy_s(story[19], "右の番人：左の道こそ、先へ続くと告げるだろう。\nその答えを慎重に吟味する。そして、選び取る。");
+
+		
+		strcpy_s(story[49], "その道を進むにつれ、温かな光が強まり、影を押し退けていく。\n番人たちは、その役目を終え、背後に消え去った。\nお前は、自らの価値を証明したのだ。\n天国へようこそ。\n今、創造主とまみえる時。"); //GOOD ENDING GOOD GIAN PICTURE
+		strcpy_s(story[50], "...");
+
+		strcpy_s(story[47], "扉をくぐると、途端に全てが霧散し、熱が全身を包み込む。\nもう引き返せぬと悟った時には遅かった。\n地獄へと落ちたのだ。\n今、彼とまみえねばならぬ。"); //BAD ENDING EVIL GIAN PICTURE
+		strcpy_s(story[48], "..."); //BAD ENDING EVIL GIAN PICTURE
 
 
+		memset(dispSel, 0, sizeof(dispSel)); //ストーリーの行番号を初期化
 
+		dispSel[1] = true;
+		dispSel[6] = true;
+		dispSel[9] = true;
+		dispSel[11] = true;
+		dispSel[14] = true;
+		dispSel[16] = true;
+		dispSel[19] = true;
 
 		memset(storyLine, 0, sizeof(storyLine)); //ストーリーの行番号を初期化
 
@@ -295,14 +399,16 @@ LRESULT CALLBACK WindowProc(
 		}
 
 		//MIDIまたはmp3ファイルのオプション
-		mciSendString("open Data\\BGM\\Holiday.mp3 alias BGM1", nullptr, 0, hWnd);
-		mciSendString("open Data\\BGM\\Last.mp3 alias BGM2", nullptr, 0, hWnd);
-		mciSendString("open Data\\BGM\\Pinch.mp3 alias BGM3", nullptr, 0, hWnd);
-		mciSendString("open Data\\BGM\\ThemeOfGian.mp3 alias BGM4", nullptr, 0, hWnd);
+		mciSendString("open Data\\BGM\\Menu.wav alias BGM0", nullptr, 0, hWnd);
+		mciSendString("open Data\\BGM\\Loop.mp3 alias BGM1", nullptr, 0, hWnd);
+		mciSendString("open Data\\BGM\\DecisionMaking.mp3 alias BGM5", nullptr, 0, hWnd);
+		mciSendString("open Data\\BGM\\EvilGian.mp3 alias BGM11", nullptr, 0, hWnd);
+		mciSendString("open Data\\BGM\\GoodEnd.mp3 alias BGM10", nullptr, 0, hWnd);
+
 
 		//BGMの再生
 		//BGM番号設定
-		BGMNo = playBGM(1, hWnd);
+		BGMNo = playBGM(0, hWnd);
 		//タイマー設定
 		SetTimer(hWnd,
 			1,			//タイマーNo
@@ -345,8 +451,6 @@ LRESULT CALLBACK WindowProc(
 			if (selNo > 2)
 				selNo--;
 			break;
-		case VK_LEFT:
-		case VK_RIGHT:
 		case VK_ESCAPE:
 			//ESCAPEキーが押されたらメニューを表示
 			if (sceneNo != -1)
@@ -370,11 +474,24 @@ LRESULT CALLBACK WindowProc(
 
 			if (sceneNo == -1)
 			{
+
+				memset(storyLine, 0, sizeof(storyLine)); //ストーリーの行番号を初期化
+				memset(inScreenText, ' ', sizeof(inScreenText));
+
+				for (int i = 0; i < 50; i++)
+				{
+					for (int j = 0; j < 200 * 3; j++)
+					{
+						if (story[i][j] == '\n')
+							storyLine[i]++;	//ストーリーの行番カウンター
+					}
+				}
 				menuShow = true;
 			}
 
-			if (sceneNo > -1 && !dispSel && storyLine[sceneNo] >= 0)
+			if ((sceneNo > -1) && (storyLine[sceneNo] >= 0))
 			{
+				dispSelFlag = false;	//選択肢表示フラグを立てる	
 				--storyLine[sceneNo];	//ストーリーの行番号を減らす
 				clearText = true;	//テキストクリアフラグを立てる
 
@@ -393,14 +510,12 @@ LRESULT CALLBACK WindowProc(
 				break;
 			}
 
-			memset(inScreenText, ' ', sizeof(inScreenText));
 			clearText = false;
 			lastLine = 0;
-			NextScene(sceneNo, dispSel, selNo, menuShow);
+			NextScene(hWnd,sceneNo, selNo, menuShow, questionFlag, BGMNo);
 
-
-			//switch (sceneNo)
-			//{
+		//switch (sceneNo)
+		//{
 
 		//	case 0:
 		//		//BGMの停止
@@ -561,7 +676,7 @@ LRESULT CALLBACK WindowProc(
 			//InvalidateRect(hWnd, nullptr, FALSE); // Request redraw
 
 			//選択肢の表示
-			if (dispSel)
+			if (dispSel[sceneNo] && (storyLine[sceneNo] < 0))
 			{
 				int cnt = 1;
 				SetTextColor(hDC, RGB(0xFF, 0xFF, 0xFF));
@@ -571,14 +686,17 @@ LRESULT CALLBACK WindowProc(
 					if (selNo == cnt)
 					{
 						SetBkMode(hDC, OPAQUE);
-						SetBkColor(hDC, RGB(0x8B, 0x8B, 0x8B));
+						if(questionFlag)
+							SetBkColor(hDC, RGB(199, 2, 2));
+						else 
+							SetBkColor(hDC, RGB(0x8B, 0x8B, 0x8B));
 					}
 					else
 						SetBkMode(hDC, TRANSPARENT);
 
 					RECT drawRect;
-					drawRect.left = rect.left + (rect.right - rect.left) * 10 / 100;
-					drawRect.top = 120 + 60 * cnt;
+					drawRect.left = rect.left + (rect.right - rect.left) * 20 / 100;
+					drawRect.top = 30 + 60 * cnt;
 					drawRect.right = rect.right - (rect.right - rect.left) * 10 / 100;
 					drawRect.bottom = currHeight;
 
@@ -604,7 +722,7 @@ LRESULT CALLBACK WindowProc(
 
 			//Show game title 
 			DrawText(hDC,
-				"タイトル",		//表示する文字列
+				gameTitle,		//表示する文字列
 				-1,				//文字数を指定（-1で全部）
 				&rect,			//表示範囲
 				DT_WORDBREAK);	//折り返し
@@ -736,10 +854,9 @@ int WINAPI WinMain(
 
 	return 0;
 }
-
-void NextScene(int& sceneNo, bool& dispSel, int& selNo, bool& menuShow)
+//シーンの切り替え関数
+void NextScene(HWND& hWnd, int& sceneNo, int& selNo, bool& menuShow, bool& questionFlag, int& BGMNo)
 {
-
 	switch (sceneNo)
 	{
 	case -1:
@@ -754,72 +871,173 @@ void NextScene(int& sceneNo, bool& dispSel, int& selNo, bool& menuShow)
 			break;
 		}
 		menuShow = false;
+		stopBGM(0, hWnd); //BGMを停止
+		BGMNo = playBGM(1, hWnd); //BGMを再生
 		break;
 	case 0:
+
 		sceneNo = 1;
-		dispSel = true;
 		break;
+
 	case 1:
 		switch (selNo) {
-
 		case 1:
-
 			sceneNo = 4;
-			dispSel = false;
 			break;
 		case 2:
-
 			sceneNo = 8;
-			dispSel = false;
 			break;
 		}
 		break;
-	case 2:
+	
 	case 4:
 		sceneNo = 6;
-		dispSel = true;
+		stopBGM(BGMNo, hWnd); //BGMを停止
+		BGMNo = playBGM(5, hWnd); //BGMを再生
 		break;
 	case 8:
 		sceneNo = 9;
-		dispSel = true;
+		stopBGM(BGMNo, hWnd); //BGMを停止
+		BGMNo = playBGM(5, hWnd); //BGMを再生
 		break;
+
 	case 6:
-
 		switch (selNo) {
-
+		PlaySound("Data\\WAV\\OpenDoor.wav",
+			nullptr, 
+			SND_ASYNC | SND_FILENAME | SND_PURGE); //ドアを開く音を再生
 		case 1:
-
-			sceneNo = -1;
+			sceneNo = 11;
+			questionFlag = true; //重要な質問フラグを立てる
 			break;
 		case 2:
-
-			sceneNo = -1;
+			sceneNo = 16;
+			questionFlag = true; //重要な質問フラグを立てる
 			break;
 		}
+		break;
 
-	case 7:
 	case 9:
 		switch (selNo) {
-
 		case 1:
-
-			sceneNo = -1;
+			sceneNo = 14;
+			questionFlag = true; //重要な質問フラグを立てる
 			break;
 		case 2:
-
-			sceneNo = -1;
+			sceneNo = 19;
+			questionFlag = true; //重要な質問フラグを立てる
 			break;
 
 		}
-	case 10:
-	case 11:
-	case 12:
-	case 13:
-	case 50:
-		sceneNo = -1;
 		break;
+
+	case 11:
+		PlaySound("Data\\WAV\\OpenDoor.wav",
+			nullptr, 
+			SND_ASYNC | SND_FILENAME | SND_PURGE);
+		switch (selNo) {
+
+		case 1:
+			sceneNo = 49;
+			questionFlag = true; //重要な質問フラグを立てる
+			stopBGM(BGMNo, hWnd); //BGMを停止
+			BGMNo = playBGM(10, hWnd); //BGMを再生
+			break;
+		case 2:
+			sceneNo = 47;
+			questionFlag = true; //重要な質問フラグを立てる
+			stopBGM(BGMNo, hWnd); //BGMを停止
+			BGMNo = playBGM(11, hWnd); //BGMを再生
+			break;
+
+		}
+		break;
+	case 14:
+		PlaySound("Data\\WAV\\OpenDoor.wav",
+			nullptr,
+			SND_ASYNC | SND_FILENAME | SND_PURGE);
+		switch (selNo) {
+
+		case 1:
+			sceneNo = 47;
+			questionFlag = true; //重要な質問フラグを立てる
+			stopBGM(BGMNo, hWnd); //BGMを停止
+			BGMNo = playBGM(11, hWnd); //BGMを再生
+			break;
+		case 2:
+			sceneNo = 49;
+			questionFlag = true; //重要な質問フラグを立てる
+			stopBGM(BGMNo, hWnd); //BGMを停止
+			BGMNo = playBGM(10, hWnd); //BGMを再生
+			break;
+
+		}
+		break;
+	case 16:
+		PlaySound("Data\\WAV\\OpenDoor.wav",
+			nullptr,
+			SND_ASYNC | SND_FILENAME | SND_PURGE);
+		switch (selNo) {
+
+		case 1:
+			sceneNo = 47;
+			questionFlag = true; //重要な質問フラグを立てる
+			stopBGM(BGMNo, hWnd); //BGMを停止
+			BGMNo = playBGM(11, hWnd); //BGMを再生
+			break;
+		case 2:
+			sceneNo = 49;
+			questionFlag = true; //重要な質問フラグを立てる
+			stopBGM(BGMNo, hWnd); //BGMを停止
+			BGMNo = playBGM(10, hWnd); //BGMを再生
+			break;
+
+		}
+		break;
+	case 19:
+		PlaySound("Data\\WAV\\OpenDoor.wav",
+			nullptr, 
+			SND_ASYNC | SND_FILENAME | SND_PURGE);
+		switch (selNo) {
+
+		case 1:
+			sceneNo = 47;
+			questionFlag = true; //重要な質問フラグを立てる
+			stopBGM(BGMNo, hWnd); //BGMを停止
+			BGMNo = playBGM(11, hWnd); //BGMを再生
+			break;
+		case 2:
+			sceneNo = 49;
+			questionFlag = true; //重要な質問フラグを立てる
+			stopBGM(BGMNo, hWnd); //BGMを停止
+			BGMNo = playBGM(10, hWnd); //BGMを再生
+			break;
+
+		}
+		break;
+
+	case 47:
+		//BAD ENDING
+		PlaySound("Data\\WAV\\Scream.wav", //DISTORTED VOICE
+			nullptr,
+			SND_ASYNC | SND_FILENAME | SND_PURGE);
+		stopBGM(BGMNo, hWnd); //BGMを停止
+		BGMNo = playBGM(11, hWnd); //BGMを再生
+		sceneNo = 48; //EVIL GIAN PICTURE
+		break;
+	case 49:
+		//GOOD ENDING
+		PlaySound("Data\\WAV\\GianVoice.wav",
+			nullptr,
+			SND_ASYNC | SND_FILENAME | SND_PURGE);
+		sceneNo = 50; //GOOD GIAN PICTURE
+		break;
+
 	default:
-		printf("Next scene not found");
+		sceneNo = -1;	//初期化
+		menuShow = true;	//メニューを表示
+		stopBGM(BGMNo, hWnd); //BGMを停止
+		BGMNo = playBGM(0, hWnd); //BGMを再生
 		break;
 
 	}
